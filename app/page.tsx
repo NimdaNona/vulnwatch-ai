@@ -10,16 +10,41 @@ import {
   CodeIcon, 
   GlobeIcon,
   CheckIcon,
-  ArrowRightIcon
+  ArrowRightIcon,
+  ShieldIcon
 } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
     <>
       <CyberBackground />
       <div className="relative min-h-screen">
+        {/* Header */}
+        <header className="container mx-auto px-4 py-6">
+          <nav className="flex items-center justify-between">
+            <Link href="/" className="flex items-center space-x-2">
+              <ShieldIcon className="w-8 h-8 text-neon-green" />
+              <span className="text-xl font-bold text-white">VulnWatch</span>
+            </Link>
+            <div className="flex items-center gap-4">
+              <Link href="/login">
+                <Button variant="outline" className="border-gray-700 text-white hover:bg-gray-900">
+                  Login
+                </Button>
+              </Link>
+              <StripeCheckout 
+                planId="starter"
+                className="bg-neon-green text-black hover:bg-neon-green/90 font-semibold"
+              >
+                Get Started
+              </StripeCheckout>
+            </div>
+          </nav>
+        </header>
+
         {/* Hero Section */}
-        <section className="container mx-auto px-4 pt-20 pb-32">
+        <section className="container mx-auto px-4 pt-12 pb-32">
           <div className="max-w-6xl mx-auto text-center space-y-8">
             <Badge 
               variant="outline" 

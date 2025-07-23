@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { hashPassword } from "@/lib/auth";
+import crypto from "crypto";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -28,12 +30,27 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   try {
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email: customerEmail },
+    });
+
+    let temporaryPassword: string | undefined;
+    let hashedPassword: string | undefined;
+
+    // Generate temporary password only for new users
+    if (!existingUser) {
+      temporaryPassword = crypto.randomBytes(8).toString("hex");
+      hashedPassword = await hashPassword(temporaryPassword);
+    }
+
     // Create or update user in database
     const user = await prisma.user.upsert({
       where: { email: customerEmail },
       create: {
         email: customerEmail,
         name: customerName || undefined,
+        password: hashedPassword,
         stripeCustomerId: customerId,
         subscriptionId: subscriptionId,
         subscriptionStatus: "active",
@@ -50,7 +67,13 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
     console.log("User created/updated:", user.id);
 
-    // TODO: Send welcome email
+    // Send welcome email with temporary password for new users
+    if (temporaryPassword) {
+      // TODO: Send welcome email with temporary password
+      console.log("Temporary password for new user:", temporaryPassword);
+      // In production, send this via email and don't log it
+    }
+
     // TODO: Provision resources based on plan
   } catch (error) {
     console.error("Error creating/updating user:", error);
