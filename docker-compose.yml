@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: vulnwatch-postgres
+    environment:
+      POSTGRES_USER: vulnwatch
+      POSTGRES_PASSWORD: vulnwatch123
+      POSTGRES_DB: vulnwatch
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vulnwatch-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: vulnwatch-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - vulnwatch-network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vulnwatch-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://vulnwatch:vulnwatch123@postgres:5432/vulnwatch
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=development-secret-key-change-in-production
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - OPENVAS_HOST=openvas
+      - OPENVAS_PASSWORD=admin
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL}
+      - CORS_ORIGINS=["http://localhost:3000"]
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend:/app
+    networks:
+      - vulnwatch-network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: vulnwatch-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY}
+    depends_on:
+      - backend
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    networks:
+      - vulnwatch-network
+
+  # OpenVAS Scanner (Simplified for development)
+  # Note: In production, use the official Greenbone Community Edition containers
+  openvas:
+    image: securecompliance/gvm:latest
+    container_name: vulnwatch-openvas
+    ports:
+      - "9390:9390"
+      - "9392:9392"
+    environment:
+      - USERNAME=admin
+      - PASSWORD=admin
+    volumes:
+      - openvas_data:/data
+    networks:
+      - vulnwatch-network
+
+  # Celery Worker for background tasks
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vulnwatch-celery-worker
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://vulnwatch:vulnwatch123@postgres:5432/vulnwatch
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=development-secret-key-change-in-production
+      - OPENVAS_HOST=openvas
+      - OPENVAS_PASSWORD=admin
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    volumes:
+      - ./backend:/app
+    networks:
+      - vulnwatch-network
+    command: celery -A app.core.celery_app worker --loglevel=info
+
+  # Celery Beat for scheduled tasks
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vulnwatch-celery-beat
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://vulnwatch:vulnwatch123@postgres:5432/vulnwatch
+      - REDIS_URL=redis://redis:6379
+      - SECRET_KEY=development-secret-key-change-in-production
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    volumes:
+      - ./backend:/app
+    networks:
+      - vulnwatch-network
+    command: celery -A app.core.celery_app beat --loglevel=info
+
+volumes:
+  postgres_data:
+  redis_data:
+  openvas_data:
+
+networks:
+  vulnwatch-network:
+    driver: bridge
