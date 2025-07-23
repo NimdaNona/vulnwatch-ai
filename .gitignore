@@ -57,3 +57,4 @@ Thumbs.db
 /scripts/create-recurring-prices.js
 
 /lib/generated/prisma
+backend/.env
