@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -18,40 +19,68 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const customerEmail = session.customer_details?.email;
   const customerName = session.customer_details?.name;
   const planId = session.metadata?.plan_id;
-  const subscriptionId = session.subscription;
+  const subscriptionId = session.subscription as string;
+  const customerId = session.customer as string;
 
-  // In a real implementation, you would:
-  // 1. Create or update user account in your database
-  // 2. Store the subscription ID for future reference
-  // 3. Grant access to the purchased plan
-  // 4. Send welcome email
-  
-  // For MVP, we'll just log the information
-  console.log("New subscription created:", {
-    email: customerEmail,
-    name: customerName,
-    plan: planId,
-    subscriptionId: subscriptionId,
-  });
+  if (!customerEmail) {
+    console.error("No customer email found in session");
+    return;
+  }
 
-  // Here you could store in a database or external service
-  // For now, we'll just log it
-  if (customerEmail) {
-    console.log(`Would send welcome email to ${customerEmail}`);
-    console.log(`Would provision ${planId} resources for ${customerName}`);
+  try {
+    // Create or update user in database
+    const user = await prisma.user.upsert({
+      where: { email: customerEmail },
+      create: {
+        email: customerEmail,
+        name: customerName || undefined,
+        stripeCustomerId: customerId,
+        subscriptionId: subscriptionId,
+        subscriptionStatus: "active",
+        subscriptionPlan: planId,
+      },
+      update: {
+        name: customerName || undefined,
+        stripeCustomerId: customerId,
+        subscriptionId: subscriptionId,
+        subscriptionStatus: "active",
+        subscriptionPlan: planId,
+      },
+    });
+
+    console.log("User created/updated:", user.id);
+
+    // TODO: Send welcome email
+    // TODO: Provision resources based on plan
+  } catch (error) {
+    console.error("Error creating/updating user:", error);
+    throw error;
   }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   console.log("Subscription updated:", subscription.id);
   
-  // Handle subscription updates (upgrades, downgrades, cancellations)
   const status = subscription.status;
-  const customerId = subscription.customer;
-  
-  if (status === "canceled") {
-    console.log("Subscription canceled for customer:", customerId);
-    // Handle cancellation logic
+  const customerId = subscription.customer as string;
+  const subscriptionId = subscription.id;
+  const planId = subscription.items.data[0]?.price.metadata?.plan_id || 
+                 subscription.metadata?.plan_id;
+
+  try {
+    // Update user subscription status in database
+    const user = await prisma.user.update({
+      where: { stripeCustomerId: customerId },
+      data: {
+        subscriptionStatus: status,
+        subscriptionPlan: status === "canceled" ? null : planId,
+      },
+    });
+
+    console.log(`Subscription ${status} for user:`, user.id);
+  } catch (error) {
+    console.error("Error updating subscription:", error);
+    throw error;
   }
 }
 

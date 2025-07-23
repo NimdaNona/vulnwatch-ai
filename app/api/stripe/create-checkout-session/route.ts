@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: "subscription", // Changed from "payment" to "subscription"
-      success_url: success_url + "?session_id={CHECKOUT_SESSION_ID}",
+      success_url: success_url,
       cancel_url: cancel_url,
       allow_promotion_codes: true,
       billing_address_collection: "required",

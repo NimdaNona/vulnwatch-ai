@@ -55,3 +55,5 @@ Thumbs.db
 
 # Scripts (contains sensitive data)
 /scripts/create-recurring-prices.js
+
+/lib/generated/prisma

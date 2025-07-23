@@ -39,7 +39,7 @@ export function StripeCheckout({
           },
           body: JSON.stringify({
             plan_id: planId,
-            success_url: `${window.location.origin}/checkout/success`,
+            success_url: `${window.location.origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${window.location.origin}/checkout/cancel`,
           }),
         }
