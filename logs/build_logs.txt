@@ -1,0 +1,77 @@
+[15:25:51.941] Running build in Washington, D.C., USA (East) – iad1
+[15:25:51.942] Build machine configuration: 4 cores, 8 GB
+[15:25:51.961] Cloning github.com/NimdaNona/vulnwatch-ai (Branch: main, Commit: 5708dd2)
+[15:25:52.280] Warning: Failed to fetch one or more git submodules
+[15:25:52.280] Cloning completed: 319.000ms
+[15:25:55.256] Restored build cache from previous deployment (AsbFFEQtvQDX1ujQw5Yc2sxnq7mt)
+[15:25:57.593] Running "vercel build"
+[15:25:58.093] Vercel CLI 44.5.0
+[15:25:58.413] Running "install" command: `npm install`...
+[15:26:00.420] 
+[15:26:00.421] > vulnwatch-frontend@0.1.0 postinstall
+[15:26:00.421] > prisma generate
+[15:26:00.421] 
+[15:26:01.235] Prisma schema loaded from prisma/schema.prisma
+[15:26:01.476] 
+[15:26:01.476] ✔ Generated Prisma Client (v6.12.0) to ./node_modules/@prisma/client in 131ms
+[15:26:01.476] 
+[15:26:01.476] Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+[15:26:01.476] 
+[15:26:01.476] Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+[15:26:01.477] 
+[15:26:01.498] 
+[15:26:01.498] added 32 packages, and audited 453 packages in 3s
+[15:26:01.499] 
+[15:26:01.499] 163 packages are looking for funding
+[15:26:01.499]   run `npm fund` for details
+[15:26:01.500] 
+[15:26:01.500] found 0 vulnerabilities
+[15:26:01.533] Detected Next.js version: 15.4.3
+[15:26:01.534] Running "npm run build"
+[15:26:01.658] 
+[15:26:01.658] > vulnwatch-frontend@0.1.0 build
+[15:26:01.658] > prisma generate && next build
+[15:26:01.658] 
+[15:26:02.352] Prisma schema loaded from prisma/schema.prisma
+[15:26:02.518] 
+[15:26:02.518] ✔ Generated Prisma Client (v6.12.0) to ./node_modules/@prisma/client in 73ms
+[15:26:02.518] 
+[15:26:02.518] Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+[15:26:02.519] 
+[15:26:02.519] Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+[15:26:02.519] 
+[15:26:03.872]    ▲ Next.js 15.4.3
+[15:26:03.872] 
+[15:26:03.905]    Creating an optimized production build ...
+[15:26:09.190] Failed to compile.
+[15:26:09.190] 
+[15:26:09.190] ./app/dashboard/page.tsx
+[15:26:09.191] Module not found: Can't resolve '@/components/ui/input'
+[15:26:09.191] 
+[15:26:09.191] https://nextjs.org/docs/messages/module-not-found
+[15:26:09.191] 
+[15:26:09.191] ./components/auth/login-form.tsx
+[15:26:09.191] Module not found: Can't resolve '@/components/ui/input'
+[15:26:09.191] 
+[15:26:09.191] https://nextjs.org/docs/messages/module-not-found
+[15:26:09.191] 
+[15:26:09.191] ./components/auth/login-form.tsx
+[15:26:09.191] Module not found: Can't resolve '@/components/ui/label'
+[15:26:09.191] 
+[15:26:09.191] https://nextjs.org/docs/messages/module-not-found
+[15:26:09.191] 
+[15:26:09.192] ./components/auth/register-form.tsx
+[15:26:09.192] Module not found: Can't resolve '@/components/ui/input'
+[15:26:09.192] 
+[15:26:09.192] https://nextjs.org/docs/messages/module-not-found
+[15:26:09.192] 
+[15:26:09.192] ./components/auth/register-form.tsx
+[15:26:09.192] Module not found: Can't resolve '@/components/ui/label'
+[15:26:09.192] 
+[15:26:09.192] https://nextjs.org/docs/messages/module-not-found
+[15:26:09.192] 
+[15:26:09.201] 
+[15:26:09.202] > Build failed because of webpack errors
+[15:26:09.227] Error: Command "npm run build" exited with 1
+[15:26:09.506] 
+[15:26:12.263] Exiting build container
