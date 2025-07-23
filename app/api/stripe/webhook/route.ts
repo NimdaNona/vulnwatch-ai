@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
+import { sendWelcomeEmail } from "@/lib/email";
 import crypto from "crypto";
 
 // Initialize Stripe
@@ -69,9 +70,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
     // Send welcome email with temporary password for new users
     if (temporaryPassword) {
-      // TODO: Send welcome email with temporary password
-      console.log("Temporary password for new user:", temporaryPassword);
-      // In production, send this via email and don't log it
+      try {
+        await sendWelcomeEmail(
+          customerEmail,
+          customerName || null,
+          temporaryPassword
+        );
+        console.log("Welcome email sent to:", customerEmail);
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+        // Don't throw - user is already created, just log the error
+      }
     }
 
     // TODO: Provision resources based on plan

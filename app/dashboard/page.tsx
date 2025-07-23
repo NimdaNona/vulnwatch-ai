@@ -43,11 +43,33 @@ export default function DashboardPage() {
   const handleAddDomain = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsScanning(true);
-    // TODO: Implement domain scanning
-    setTimeout(() => {
+    
+    try {
+      const response = await fetch("/api/scans/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          domain,
+          scanType: "full",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to start scan");
+      }
+
+      // Success - redirect to scan details or refresh
+      router.push(`/dashboard/scans/${data.scan.id}`);
+    } catch (error) {
+      console.error("Scan error:", error);
+      alert(error instanceof Error ? error.message : "Failed to start scan");
+    } finally {
       setIsScanning(false);
-      setDomain("");
-    }, 2000);
+    }
   };
 
   // Mock data for demonstration
