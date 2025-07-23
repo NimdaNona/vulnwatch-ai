@@ -3,17 +3,14 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import { Card } from "@/components/ui/card";
 import { 
   PlusIcon, 
   ScanIcon, 
   ShieldIcon, 
   ClockIcon,
-  TrendingUpIcon,
-  AlertTriangleIcon,
-  CheckCircleIcon,
-  XCircleIcon
+  AlertTriangleIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/components/auth/auth-provider";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+
+
 import Link from "next/link";
 import {
   ShieldIcon,
@@ -21,7 +21,6 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, logout } = useAuth();
-  const router = useRouter();
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const navigation = [

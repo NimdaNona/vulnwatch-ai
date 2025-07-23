@@ -86,7 +86,6 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   
   const status = subscription.status;
   const customerId = subscription.customer as string;
-  const subscriptionId = subscription.id;
   const planId = subscription.items.data[0]?.price.metadata?.plan_id || 
                  subscription.metadata?.plan_id;
 
