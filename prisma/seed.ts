@@ -50,7 +50,6 @@ async function main() {
       userId: user1.id,
       targetUrl: "https://test.example.com",
       status: "running",
-      results: null,
     },
   });
 
