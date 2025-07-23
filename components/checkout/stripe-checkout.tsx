@@ -1,14 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
 import { Button } from "@/components/ui/button";
 import { ArrowRightIcon, Loader2Icon } from "lucide-react";
-
-// Initialize Stripe
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
 
 interface StripeCheckoutProps {
   planId: "starter" | "pro" | "enterprise";
