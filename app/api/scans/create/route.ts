@@ -12,7 +12,7 @@ import {
 // Request validation schema
 const createScanSchema = z.object({
   domain: z.string().url("Invalid domain URL"),
-  scanType: z.enum(["quick", "full", "web"]).default("full"),
+  scanType: z.enum(["quick", "deep"]).default("deep"),
 });
 
 export async function POST(request: NextRequest) {
@@ -142,6 +142,8 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         targetUrl: target,
         status: "pending",
+        // Store scanType in results field temporarily since there's no scanType column
+        results: { scanType },
       },
     });
 

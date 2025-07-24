@@ -33,7 +33,9 @@ export async function processScan(scanId: string) {
     // Perform the actual scan
     // Note: scan.target is undefined - using targetUrl instead
     const target = (scan as any).target || scan.targetUrl;
-    const scanResult = await runComprehensiveScan(target);
+    // Get scanType from results field where it was temporarily stored
+    const scanType = ((scan.results as any)?.scanType as "deep" | "quick") || "deep";
+    const scanResult = await runComprehensiveScan(target, scanType);
 
     // Save vulnerabilities to database
     const vulnerabilities = await Promise.all(

@@ -3,14 +3,22 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { 
   PlusIcon, 
   ScanIcon, 
   ShieldIcon, 
   ClockIcon,
-  AlertTriangleIcon
+  AlertTriangleIcon,
+  ZapIcon,
+  SearchIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +27,7 @@ export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [domain, setDomain] = useState("");
+  const [scanType, setScanType] = useState<"quick" | "deep">("quick");
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
   const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
@@ -55,7 +64,7 @@ export default function DashboardPage() {
         },
         body: JSON.stringify({
           domain,
-          scanType: "full",
+          scanType,
         }),
       });
 
@@ -164,34 +173,67 @@ export default function DashboardPage() {
       {/* Add Domain Form */}
       <Card className="bg-black/50 backdrop-blur-lg border-gray-800 p-6 mb-8">
         <h2 className="text-xl font-semibold text-white mb-4">Add Domain to Scan</h2>
-        <form onSubmit={handleAddDomain} className="flex gap-4">
-          <div className="flex-1">
-            <Input
-              type="url"
-              placeholder="https://example.com"
-              value={domain}
-              onChange={(e) => setDomain(e.target.value)}
-              className="bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-neon-green focus:ring-neon-green/20"
-              required
-            />
+        <form onSubmit={handleAddDomain} className="space-y-4">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Input
+                type="url"
+                placeholder="https://example.com"
+                value={domain}
+                onChange={(e) => setDomain(e.target.value)}
+                className="bg-gray-900/50 border-gray-700 text-white placeholder:text-gray-500 focus:border-neon-green focus:ring-neon-green/20"
+                required
+              />
+            </div>
+            <Select value={scanType} onValueChange={(value: "quick" | "deep") => setScanType(value)}>
+              <SelectTrigger className="w-[180px] bg-gray-900/50 border-gray-700 text-white">
+                <SelectValue placeholder="Select scan type" />
+              </SelectTrigger>
+              <SelectContent className="bg-gray-900 border-gray-700">
+                <SelectItem value="quick" className="text-white hover:bg-gray-800">
+                  <div className="flex items-center">
+                    <ZapIcon className="mr-2 h-4 w-4 text-yellow-500" />
+                    Quick Scan
+                  </div>
+                </SelectItem>
+                <SelectItem value="deep" className="text-white hover:bg-gray-800">
+                  <div className="flex items-center">
+                    <SearchIcon className="mr-2 h-4 w-4 text-blue-500" />
+                    Deep Scan
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              type="submit"
+              disabled={isScanning}
+              className="bg-gradient-to-r from-neon-green to-neon-blue text-black font-semibold hover:opacity-90 transition-opacity"
+            >
+              {isScanning ? (
+                <>
+                  <ScanIcon className="mr-2 h-4 w-4 animate-spin" />
+                  Scanning...
+                </>
+              ) : (
+                <>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Start Scan
+                </>
+              )}
+            </Button>
           </div>
-          <Button
-            type="submit"
-            disabled={isScanning}
-            className="bg-gradient-to-r from-neon-green to-neon-blue text-black font-semibold hover:opacity-90 transition-opacity"
-          >
-            {isScanning ? (
-              <>
-                <ScanIcon className="mr-2 h-4 w-4 animate-spin" />
-                Scanning...
-              </>
-            ) : (
-              <>
-                <PlusIcon className="mr-2 h-4 w-4" />
-                Start Scan
-              </>
-            )}
-          </Button>
+          
+          {/* Scan Type Info */}
+          <div className="flex items-center gap-6 text-sm">
+            <div className="flex items-center text-gray-400">
+              <ZapIcon className="mr-1 h-3 w-3 text-yellow-500" />
+              <span><strong>Quick Scan:</strong> Fast scan of essential ports (80, 443, 22, 8080)</span>
+            </div>
+            <div className="flex items-center text-gray-400">
+              <SearchIcon className="mr-1 h-3 w-3 text-blue-500" />
+              <span><strong>Deep Scan:</strong> Comprehensive scan of all common ports</span>
+            </div>
+          </div>
         </form>
         
         {/* Error Message */}

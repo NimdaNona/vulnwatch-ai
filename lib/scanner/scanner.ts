@@ -1,12 +1,22 @@
-import nmap from "node-nmap";
 import * as tls from "tls";
-import * as https from "https";
-import { URL } from "url";
 import { analyzeThreats, SSLCertificateInfo } from "./ai-analyzer";
 import { enumerateSubdomains, SubdomainEnumerationResult } from "./subdomain-enumerator";
+import { performCloudScan, performQuickCloudScan } from "./cloud-scanner";
 
-// Initialize nmap
-nmap.nmapLocation = "nmap"; // Assumes nmap is in PATH
+// Only import nmap if not on Vercel
+let nmap: any = null;
+if (!process.env.VERCEL) {
+  import("node-nmap")
+    .then((module) => {
+      nmap = module.default || module;
+      if (nmap.nmapLocation) {
+        nmap.nmapLocation = "nmap";
+      }
+    })
+    .catch(() => {
+      console.log("[Scanner] nmap not available, using cloud scanner");
+    });
+}
 
 export interface ScanResult {
   domain: string;
@@ -48,7 +58,14 @@ export interface Vulnerability {
   cveIds?: string[];
 }
 
-export async function performPortScan(domain: string): Promise<ScanResult> {
+export async function performPortScan(domain: string, scanType: "deep" | "quick" = "deep"): Promise<ScanResult> {
+  // Use cloud scanner in Vercel environment or when nmap is not available
+  if (process.env.VERCEL || !nmap) {
+    console.log("[Scanner] Using cloud-based scanner");
+    return scanType === "quick" ? performQuickCloudScan(domain) : performCloudScan(domain);
+  }
+
+  // Original nmap-based implementation for local environments
   const startTime = Date.now();
   
   return new Promise((resolve, reject) => {
@@ -409,12 +426,12 @@ function formatCertificateSubject(subject: any): string {
 }
 
 // Main scan orchestrator
-export async function runComprehensiveScan(target: string): Promise<ScanResult> {
-  console.log(`Starting comprehensive scan for: ${target}`);
+export async function runComprehensiveScan(target: string, scanType: "deep" | "quick" = "deep"): Promise<ScanResult> {
+  console.log(`Starting ${scanType} scan for: ${target}`);
   
   try {
     // Run port scan
-    const scanResult = await performPortScan(target);
+    const scanResult = await performPortScan(target, scanType);
     
     // If web services detected, run web scan
     const hasWebService = scanResult.services.some(
@@ -450,37 +467,39 @@ export async function runComprehensiveScan(target: string): Promise<ScanResult> 
       }
     }
     
-    // Perform subdomain enumeration
-    console.log(`Starting subdomain enumeration for: ${target}`);
-    try {
-      const subdomainResult = await enumerateSubdomains(target, {
-        useExternal: true,
-        timeout: 30000,
-        maxSubdomains: 50
-      });
-      
-      scanResult.subdomains = subdomainResult;
-      console.log(`Found ${subdomainResult.totalFound} subdomains for ${target}`);
-      
-      // Check for subdomain takeover vulnerabilities
-      if (subdomainResult.totalFound > 0) {
-        for (const subdomain of subdomainResult.subdomains) {
-          // Check if subdomain has no IP addresses (potential takeover)
-          if (subdomain.ipAddresses.length === 0) {
-            scanResult.vulnerabilities.push({
-              id: `vuln-subdomain-takeover-${subdomain.subdomain}`,
-              title: `Potential Subdomain Takeover - ${subdomain.fullDomain}`,
-              severity: "high",
-              description: `The subdomain ${subdomain.fullDomain} has DNS records but no valid IP addresses. This could indicate a potential subdomain takeover vulnerability.`,
-              remediation: "Remove DNS records for unused subdomains or ensure they point to valid resources under your control.",
-              cvssScore: 7.4,
-            });
+    // Perform subdomain enumeration only for deep scans
+    if (scanType === "deep" && !process.env.VERCEL) {
+      console.log(`Starting subdomain enumeration for: ${target}`);
+      try {
+        const subdomainResult = await enumerateSubdomains(target, {
+          useExternal: true,
+          timeout: 30000,
+          maxSubdomains: 50
+        });
+        
+        scanResult.subdomains = subdomainResult;
+        console.log(`Found ${subdomainResult.totalFound} subdomains for ${target}`);
+        
+        // Check for subdomain takeover vulnerabilities
+        if (subdomainResult.totalFound > 0) {
+          for (const subdomain of subdomainResult.subdomains) {
+            // Check if subdomain has no IP addresses (potential takeover)
+            if (subdomain.ipAddresses.length === 0) {
+              scanResult.vulnerabilities.push({
+                id: `vuln-subdomain-takeover-${subdomain.subdomain}`,
+                title: `Potential Subdomain Takeover - ${subdomain.fullDomain}`,
+                severity: "high",
+                description: `The subdomain ${subdomain.fullDomain} has DNS records but no valid IP addresses. This could indicate a potential subdomain takeover vulnerability.`,
+                remediation: "Remove DNS records for unused subdomains or ensure they point to valid resources under your control.",
+                cvssScore: 7.4,
+              });
+            }
           }
         }
+      } catch (subdomainError) {
+        console.error("Subdomain enumeration error:", subdomainError);
+        // Don't fail the entire scan if subdomain enumeration fails
       }
-    } catch (subdomainError) {
-      console.error("Subdomain enumeration error:", subdomainError);
-      // Don't fail the entire scan if subdomain enumeration fails
     }
     
     // Sort vulnerabilities by severity
