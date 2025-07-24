@@ -11,6 +11,10 @@ import {
   AlertTriangleIcon,
   CheckCircleIcon,
   ClockIcon,
+  LockIcon,
+  ShieldOffIcon,
+  NetworkIcon,
+  GlobeIcon,
 } from "lucide-react";
 
 interface Vulnerability {
@@ -24,6 +28,34 @@ interface Vulnerability {
   service?: string;
   cvssScore?: number;
   cveIds?: string[];
+}
+
+interface SSLCertificate {
+  issuer: string;
+  subject: string;
+  validFrom: string;
+  validTo: string;
+  daysUntilExpiry: number;
+  isExpired: boolean;
+  isSelfsigned: boolean;
+  protocol?: string;
+  cipher?: string;
+  grade?: string;
+}
+
+interface SubdomainInfo {
+  subdomain: string;
+  fullDomain: string;
+  ipAddresses: string[];
+  discovered: string;
+  source: string;
+}
+
+interface SubdomainResult {
+  domain: string;
+  subdomains: SubdomainInfo[];
+  totalFound: number;
+  duration: number;
 }
 
 interface ScanDetail {
@@ -42,6 +74,8 @@ interface ScanDetail {
     low: number;
   };
   totalVulnerabilities: number;
+  sslCertificate?: SSLCertificate;
+  subdomains?: SubdomainResult;
 }
 
 export default function ScanDetailPage({ 
@@ -201,6 +235,133 @@ export default function ScanDetailPage({
             </div>
           </Card>
         </div>
+      )}
+
+      {/* Subdomains Information */}
+      {scan.status === "completed" && scan.subdomains && scan.subdomains.totalFound > 0 && (
+        <Card className="bg-black/50 backdrop-blur-lg border-gray-800 p-6 mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <NetworkIcon className="w-5 h-5 text-neon-blue mr-2" />
+              <h2 className="text-xl font-semibold text-white">Discovered Subdomains</h2>
+            </div>
+            <span className="text-sm text-gray-400">
+              {scan.subdomains.totalFound} subdomain{scan.subdomains.totalFound !== 1 ? 's' : ''} found
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {scan.subdomains.subdomains.slice(0, 12).map((subdomain) => (
+              <div key={subdomain.fullDomain} className="p-3 bg-gray-900/50 rounded-lg border border-gray-800">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2">
+                      <GlobeIcon className="w-4 h-4 text-neon-blue flex-shrink-0" />
+                      <p className="text-sm font-mono text-white truncate">{subdomain.fullDomain}</p>
+                    </div>
+                    {subdomain.ipAddresses.length > 0 ? (
+                      <p className="text-xs text-gray-400 mt-1 ml-6">
+                        {subdomain.ipAddresses[0]}
+                        {subdomain.ipAddresses.length > 1 && ` +${subdomain.ipAddresses.length - 1}`}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-yellow-500 mt-1 ml-6">No IP found</p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">Source: {subdomain.source}</p>
+              </div>
+            ))}
+          </div>
+          
+          {scan.subdomains.totalFound > 12 && (
+            <p className="text-sm text-gray-400 text-center mt-4">
+              And {scan.subdomains.totalFound - 12} more subdomain{scan.subdomains.totalFound - 12 !== 1 ? 's' : ''}...
+            </p>
+          )}
+        </Card>
+      )}
+
+      {/* SSL Certificate Information */}
+      {scan.status === "completed" && scan.sslCertificate && (
+        <Card className="bg-black/50 backdrop-blur-lg border-gray-800 p-6 mb-8">
+          <div className="flex items-center mb-4">
+            <LockIcon className="w-5 h-5 text-neon-green mr-2" />
+            <h2 className="text-xl font-semibold text-white">SSL/TLS Certificate</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-400">Subject</p>
+                  <p className="text-white">{scan.sslCertificate.subject}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Issuer</p>
+                  <p className="text-white">{scan.sslCertificate.issuer}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Protocol</p>
+                  <p className="text-white">{scan.sslCertificate.protocol || "Unknown"}</p>
+                </div>
+                {scan.sslCertificate.grade && (
+                  <div>
+                    <p className="text-sm text-gray-400">SSL Grade</p>
+                    <span className={`text-2xl font-bold ${
+                      scan.sslCertificate.grade === "A" ? "text-neon-green" :
+                      scan.sslCertificate.grade === "B" ? "text-green-400" :
+                      scan.sslCertificate.grade === "C" ? "text-yellow-500" :
+                      "text-red-500"
+                    }`}>
+                      {scan.sslCertificate.grade}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-400">Valid From</p>
+                  <p className="text-white">{new Date(scan.sslCertificate.validFrom).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Valid Until</p>
+                  <p className="text-white">{new Date(scan.sslCertificate.validTo).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Status</p>
+                  <div className="flex items-center">
+                    {scan.sslCertificate.isExpired ? (
+                      <>
+                        <ShieldOffIcon className="w-4 h-4 text-red-500 mr-1" />
+                        <span className="text-red-500">Expired</span>
+                      </>
+                    ) : scan.sslCertificate.daysUntilExpiry < 30 ? (
+                      <>
+                        <AlertTriangleIcon className="w-4 h-4 text-yellow-500 mr-1" />
+                        <span className="text-yellow-500">Expires in {scan.sslCertificate.daysUntilExpiry} days</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircleIcon className="w-4 h-4 text-neon-green mr-1" />
+                        <span className="text-neon-green">Valid ({scan.sslCertificate.daysUntilExpiry} days)</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {scan.sslCertificate.isSelfsigned && (
+                  <div className="flex items-center text-yellow-500">
+                    <AlertTriangleIcon className="w-4 h-4 mr-1" />
+                    <span>Self-signed Certificate</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
       )}
 
       {/* Vulnerabilities List */}

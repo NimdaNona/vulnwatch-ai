@@ -31,7 +31,9 @@ export async function processScan(scanId: string) {
     });
 
     // Perform the actual scan
-    const scanResult = await runComprehensiveScan(scan.target);
+    // Note: scan.target is undefined - using targetUrl instead
+    const target = (scan as any).target || scan.targetUrl;
+    const scanResult = await runComprehensiveScan(target);
 
     // Save vulnerabilities to database
     const vulnerabilities = await Promise.all(
@@ -39,15 +41,18 @@ export async function processScan(scanId: string) {
         prisma.vulnerability.create({
           data: {
             scanId: scan.id,
-            identifier: vuln.id,
             title: vuln.title,
             severity: vuln.severity.toUpperCase(),
             description: vuln.description,
-            remediation: vuln.remediation,
-            port: vuln.port,
-            service: vuln.service,
-            cvssScore: vuln.cvssScore,
-            cveIds: vuln.cveIds,
+            solution: vuln.remediation,
+            affected: vuln.service ? `${vuln.service}${vuln.port ? `:${vuln.port}` : ''}` : undefined,
+            cvss: vuln.cvssScore,
+            cve: vuln.cveIds && vuln.cveIds.length > 0 ? vuln.cveIds[0] : undefined,
+            aiAnalysis: vuln.cvssScore ? {
+              cvssScore: vuln.cvssScore,
+              cveIds: vuln.cveIds || [],
+              severity: vuln.severity,
+            } : undefined,
           },
         })
       )
@@ -59,13 +64,15 @@ export async function processScan(scanId: string) {
       data: {
         status: "completed",
         completedAt: new Date(),
-        scanResults: {
+        results: JSON.parse(JSON.stringify({
           ipAddress: scanResult.ipAddress,
           openPorts: scanResult.openPorts,
           services: scanResult.services,
           osFingerprint: scanResult.osFingerprint,
           scanDuration: scanResult.scanDuration,
-        },
+          sslCertificate: scanResult.sslCertificate,
+          subdomains: scanResult.subdomains,
+        })),
       },
     });
 
@@ -83,7 +90,7 @@ export async function processScan(scanId: string) {
         scan.user.email,
         scan.user.name,
         {
-          domain: scan.target,
+          domain: target,
           vulnerabilitiesFound: vulnerabilities.length,
           criticalCount: severityCounts.critical,
           highCount: severityCounts.high,

@@ -31,6 +31,8 @@
     "lucide-react": "^0.525.0",
     "next": "15.4.3",
     "node-nmap": "^4.0.0",
+    "node-rate-limiter": "^1.0.1",
+    "openai": "^5.10.2",
     "prisma": "^6.12.0",
     "react": "19.1.0",
     "react-confetti": "^6.4.0",

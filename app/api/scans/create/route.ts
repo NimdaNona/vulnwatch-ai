@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthToken, verifyToken } from "@/lib/auth";
 import { z } from "zod";
+import { 
+  checkRateLimit, 
+  checkDatabaseRateLimit, 
+  getPlanLimits, 
+  applyRateLimitHeaders 
+} from "@/lib/rate-limiter";
 
 // Request validation schema
 const createScanSchema = z.object({
@@ -54,13 +60,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get plan limits
+    const planLimits = getPlanLimits(user.subscriptionPlan);
+
+    // Check hourly rate limit
+    const hourlyRateLimit = await checkRateLimit({
+      windowMs: 60 * 60 * 1000, // 1 hour
+      maxRequests: planLimits.scansPerHour,
+      identifier: user.id,
+      resource: "scan",
+    });
+
+    if (!hourlyRateLimit.allowed) {
+      const response = NextResponse.json(
+        { 
+          error: "Rate limit exceeded", 
+          message: `You have reached your hourly scan limit of ${planLimits.scansPerHour} scans. Please try again later.`,
+          retryAfter: hourlyRateLimit.retryAfter 
+        },
+        { status: 429 }
+      );
+      applyRateLimitHeaders(response.headers, hourlyRateLimit);
+      return response;
+    }
+
+    // Check daily rate limit
+    const dailyRateLimit = await checkDatabaseRateLimit(
+      user.id,
+      "scan",
+      planLimits.scansPerDay
+    );
+
+    if (!dailyRateLimit.allowed) {
+      return NextResponse.json(
+        { 
+          error: "Daily limit exceeded", 
+          message: `You have reached your daily scan limit of ${planLimits.scansPerDay} scans. Your limit resets at midnight.`,
+          used: dailyRateLimit.used,
+          limit: dailyRateLimit.limit
+        },
+        { status: 429 }
+      );
+    }
+
     // Parse and validate request body
     const body = await request.json();
     const validationResult = createScanSchema.safeParse(body);
 
     if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Invalid request", details: validationResult.error.errors },
+        { error: "Invalid request", details: validationResult.error.issues },
         { status: 400 }
       );
     }
@@ -75,7 +124,7 @@ export async function POST(request: NextRequest) {
     const existingScan = await prisma.scan.findFirst({
       where: {
         userId: user.id,
-        target,
+        targetUrl: target,
         status: "running",
       },
     });
@@ -91,9 +140,8 @@ export async function POST(request: NextRequest) {
     const scan = await prisma.scan.create({
       data: {
         userId: user.id,
-        target,
+        targetUrl: target,
         status: "pending",
-        scanType,
       },
     });
 
@@ -117,16 +165,33 @@ export async function POST(request: NextRequest) {
       }
     }, 1000);
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       scan: {
         id: scan.id,
-        target: scan.target,
+        target: scan.targetUrl,
         status: scan.status,
-        scanType: scan.scanType,
+        scanType: scanType,
         createdAt: scan.createdAt,
       },
       message: "Scan queued successfully",
+      limits: {
+        hourly: {
+          used: planLimits.scansPerHour - hourlyRateLimit.remaining,
+          limit: planLimits.scansPerHour,
+          remaining: hourlyRateLimit.remaining,
+        },
+        daily: {
+          used: dailyRateLimit.used + 1,
+          limit: dailyRateLimit.limit,
+          remaining: dailyRateLimit.limit - dailyRateLimit.used - 1,
+        },
+      },
     });
+
+    // Add rate limit headers
+    applyRateLimitHeaders(response.headers, hourlyRateLimit);
+    
+    return response;
   } catch (error) {
     console.error("Create scan error:", error);
     return NextResponse.json(

@@ -76,9 +76,9 @@ export async function GET(request: NextRequest) {
 
       return {
         id: scan.id,
-        target: scan.target,
+        target: scan.targetUrl,
         status: scan.status,
-        scanType: scan.scanType,
+        scanType: "full",
         createdAt: scan.createdAt,
         completedAt: scan.completedAt,
         totalVulnerabilities: scan._count.vulnerabilities,

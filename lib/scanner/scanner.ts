@@ -1,5 +1,9 @@
 import nmap from "node-nmap";
-import { analyzeThreats } from "./ai-analyzer";
+import * as tls from "tls";
+import * as https from "https";
+import { URL } from "url";
+import { analyzeThreats, SSLCertificateInfo } from "./ai-analyzer";
+import { enumerateSubdomains, SubdomainEnumerationResult } from "./subdomain-enumerator";
 
 // Initialize nmap
 nmap.nmapLocation = "nmap"; // Assumes nmap is in PATH
@@ -13,6 +17,8 @@ export interface ScanResult {
   vulnerabilities: Vulnerability[];
   scanDuration: number;
   timestamp: Date;
+  sslCertificate?: SSLCertificateInfo;
+  subdomains?: SubdomainEnumerationResult;
 }
 
 export interface PortInfo {
@@ -91,12 +97,25 @@ export async function performPortScan(domain: string): Promise<ScanResult> {
         // Basic vulnerability detection based on services
         const vulnerabilities = await detectVulnerabilities(services, openPorts);
 
+        // Check SSL certificate if HTTPS service is detected
+        let sslCertificate: SSLCertificateInfo | null = null;
+        const httpsService = services.find(s => s.name === "https" || (s.name === "ssl/http"));
+        if (httpsService) {
+          console.log(`Checking SSL certificate for ${domain}:${httpsService.port}`);
+          sslCertificate = await checkSSLCertificate(domain, httpsService.port);
+        } else if (services.some(s => s.name === "http")) {
+          // Also check standard HTTPS port even if only HTTP was detected
+          console.log(`Checking SSL certificate for ${domain}:443`);
+          sslCertificate = await checkSSLCertificate(domain, 443);
+        }
+
         // Get AI-powered threat analysis
         const aiAnalysis = await analyzeThreats({
           domain,
           openPorts,
           services,
           osFingerprint: host.osNmap,
+          sslCertificate: sslCertificate || undefined,
         });
 
         // Merge AI findings with basic detection
@@ -111,6 +130,7 @@ export async function performPortScan(domain: string): Promise<ScanResult> {
           vulnerabilities: allVulnerabilities,
           scanDuration: Date.now() - startTime,
           timestamp: new Date(),
+          sslCertificate: sslCertificate || undefined,
         };
 
         resolve(scanResult);
@@ -289,6 +309,105 @@ export async function performWebScan(url: string): Promise<Vulnerability[]> {
   return vulnerabilities;
 }
 
+// SSL/TLS Certificate checker
+export async function checkSSLCertificate(hostname: string, port: number = 443): Promise<SSLCertificateInfo | null> {
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      console.log(`SSL check timeout for ${hostname}:${port}`);
+      resolve(null);
+    }, 5000); // 5 second timeout
+
+    try {
+      const options = {
+        host: hostname,
+        port: port,
+        rejectUnauthorized: false, // Allow self-signed certificates for scanning
+        servername: hostname, // For SNI
+      };
+
+      const socket = tls.connect(options, () => {
+        clearTimeout(timeout);
+        
+        const cert = socket.getPeerCertificate();
+        if (!cert || Object.keys(cert).length === 0) {
+          socket.end();
+          resolve(null);
+          return;
+        }
+
+        // Get protocol and cipher info
+        const protocol = socket.getProtocol();
+        const cipher = socket.getCipher();
+
+        // Parse certificate dates
+        const validFrom = new Date(cert.valid_from);
+        const validTo = new Date(cert.valid_to);
+        const now = new Date();
+        const daysUntilExpiry = Math.floor((validTo.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        const sslInfo: SSLCertificateInfo = {
+          issuer: cert.issuer ? formatCertificateSubject(cert.issuer) : "Unknown",
+          subject: cert.subject ? formatCertificateSubject(cert.subject) : "Unknown",
+          validFrom,
+          validTo,
+          daysUntilExpiry,
+          isExpired: now > validTo,
+          isSelfsigned: cert.issuer && cert.subject && 
+            JSON.stringify(cert.issuer) === JSON.stringify(cert.subject),
+          protocol: protocol || undefined,
+          cipher: cipher ? cipher.name : undefined,
+        };
+
+        // Rough SSL grade based on protocol version
+        if (protocol) {
+          if (protocol === "TLSv1.3") {
+            sslInfo.grade = "A";
+          } else if (protocol === "TLSv1.2") {
+            sslInfo.grade = "B";
+          } else if (protocol === "TLSv1.1" || protocol === "TLSv1") {
+            sslInfo.grade = "C";
+          } else {
+            sslInfo.grade = "F";
+          }
+        }
+
+        socket.end();
+        resolve(sslInfo);
+      });
+
+      socket.on("error", (error) => {
+        clearTimeout(timeout);
+        console.log(`SSL check error for ${hostname}:${port}:`, error.message);
+        resolve(null);
+      });
+
+      socket.on("timeout", () => {
+        clearTimeout(timeout);
+        socket.destroy();
+        resolve(null);
+      });
+
+    } catch (error) {
+      clearTimeout(timeout);
+      console.log(`SSL check exception for ${hostname}:${port}:`, error);
+      resolve(null);
+    }
+  });
+}
+
+function formatCertificateSubject(subject: any): string {
+  if (typeof subject === "string") return subject;
+  
+  const parts = [];
+  if (subject.CN) parts.push(`CN=${subject.CN}`);
+  if (subject.O) parts.push(`O=${subject.O}`);
+  if (subject.C) parts.push(`C=${subject.C}`);
+  if (subject.ST) parts.push(`ST=${subject.ST}`);
+  if (subject.L) parts.push(`L=${subject.L}`);
+  
+  return parts.join(", ") || "Unknown";
+}
+
 // Main scan orchestrator
 export async function runComprehensiveScan(target: string): Promise<ScanResult> {
   console.log(`Starting comprehensive scan for: ${target}`);
@@ -306,6 +425,62 @@ export async function runComprehensiveScan(target: string): Promise<ScanResult> 
       const protocol = scanResult.services.find(s => s.name === "https") ? "https" : "http";
       const webVulns = await performWebScan(`${protocol}://${target}`);
       scanResult.vulnerabilities.push(...webVulns);
+    }
+
+    // If no SSL cert was found during port scan but we have web services, try standard HTTPS port
+    if (!scanResult.sslCertificate && hasWebService) {
+      console.log(`Checking SSL certificate on standard HTTPS port for ${target}`);
+      const sslCert = await checkSSLCertificate(target, 443);
+      if (sslCert) {
+        scanResult.sslCertificate = sslCert;
+        // Re-run AI analysis with SSL info if we found a certificate
+        const aiAnalysis = await analyzeThreats({
+          domain: target,
+          openPorts: scanResult.openPorts,
+          services: scanResult.services,
+          osFingerprint: scanResult.osFingerprint,
+          sslCertificate: sslCert,
+        });
+        // Only add new vulnerabilities, avoid duplicates
+        for (const vuln of aiAnalysis.vulnerabilities) {
+          if (!scanResult.vulnerabilities.some(v => v.id === vuln.id)) {
+            scanResult.vulnerabilities.push(vuln);
+          }
+        }
+      }
+    }
+    
+    // Perform subdomain enumeration
+    console.log(`Starting subdomain enumeration for: ${target}`);
+    try {
+      const subdomainResult = await enumerateSubdomains(target, {
+        useExternal: true,
+        timeout: 30000,
+        maxSubdomains: 50
+      });
+      
+      scanResult.subdomains = subdomainResult;
+      console.log(`Found ${subdomainResult.totalFound} subdomains for ${target}`);
+      
+      // Check for subdomain takeover vulnerabilities
+      if (subdomainResult.totalFound > 0) {
+        for (const subdomain of subdomainResult.subdomains) {
+          // Check if subdomain has no IP addresses (potential takeover)
+          if (subdomain.ipAddresses.length === 0) {
+            scanResult.vulnerabilities.push({
+              id: `vuln-subdomain-takeover-${subdomain.subdomain}`,
+              title: `Potential Subdomain Takeover - ${subdomain.fullDomain}`,
+              severity: "high",
+              description: `The subdomain ${subdomain.fullDomain} has DNS records but no valid IP addresses. This could indicate a potential subdomain takeover vulnerability.`,
+              remediation: "Remove DNS records for unused subdomains or ensure they point to valid resources under your control.",
+              cvssScore: 7.4,
+            });
+          }
+        }
+      }
+    } catch (subdomainError) {
+      console.error("Subdomain enumeration error:", subdomainError);
+      // Don't fail the entire scan if subdomain enumeration fails
     }
     
     // Sort vulnerabilities by severity

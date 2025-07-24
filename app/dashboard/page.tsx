@@ -20,6 +20,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [domain, setDomain] = useState("");
   const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [rateLimitInfo, setRateLimitInfo] = useState<any>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   const handleAddDomain = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsScanning(true);
+    setScanError(null);
     
     try {
       const response = await fetch("/api/scans/create", {
@@ -59,14 +62,32 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to start scan");
+        // Handle rate limit errors specially
+        if (response.status === 429) {
+          setScanError(data.message || "Rate limit exceeded");
+          if (data.used && data.limit) {
+            setRateLimitInfo({
+              used: data.used,
+              limit: data.limit,
+              retryAfter: data.retryAfter,
+            });
+          }
+        } else {
+          setScanError(data.error || "Failed to start scan");
+        }
+        return;
       }
 
-      // Success - redirect to scan details or refresh
+      // Store rate limit info from successful response
+      if (data.limits) {
+        setRateLimitInfo(data.limits);
+      }
+
+      // Success - redirect to scan details
       router.push(`/dashboard/scans/${data.scan.id}`);
     } catch (error) {
       console.error("Scan error:", error);
-      alert(error instanceof Error ? error.message : "Failed to start scan");
+      setScanError(error instanceof Error ? error.message : "Failed to start scan");
     } finally {
       setIsScanning(false);
     }
@@ -172,6 +193,40 @@ export default function DashboardPage() {
             )}
           </Button>
         </form>
+        
+        {/* Error Message */}
+        {scanError && (
+          <div className="mt-4 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <p className="text-red-500">{scanError}</p>
+            {rateLimitInfo && rateLimitInfo.retryAfter && (
+              <p className="text-sm text-red-400 mt-1">
+                Please try again in {rateLimitInfo.retryAfter} seconds
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Rate Limit Info */}
+        {rateLimitInfo && (
+          <div className="mt-4 space-y-2">
+            {rateLimitInfo.hourly && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-400">Hourly Limit:</span>
+                <span className="text-white">
+                  {rateLimitInfo.hourly.used} / {rateLimitInfo.hourly.limit} scans
+                </span>
+              </div>
+            )}
+            {rateLimitInfo.daily && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-400">Daily Limit:</span>
+                <span className="text-white">
+                  {rateLimitInfo.daily.used} / {rateLimitInfo.daily.limit} scans
+                </span>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
 
       {/* Recent Scans */}

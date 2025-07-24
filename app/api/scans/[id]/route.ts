@@ -76,18 +76,33 @@ export async function GET(
       }
     });
 
+    // Extract SSL certificate and subdomain info from results if available
+    let sslCertificate = null;
+    let subdomains = null;
+    if (scan.results && typeof scan.results === 'object') {
+      const results = scan.results as any;
+      if (results.sslCertificate) {
+        sslCertificate = results.sslCertificate;
+      }
+      if (results.subdomains) {
+        subdomains = results.subdomains;
+      }
+    }
+
     return NextResponse.json({
       scan: {
         id: scan.id,
-        target: scan.target,
+        target: scan.targetUrl,
         status: scan.status,
-        scanType: scan.scanType,
-        scanResults: scan.scanResults,
+        scanType: (scan as any).scanType || 'full',
+        scanResults: scan.results,
         createdAt: scan.createdAt,
         completedAt: scan.completedAt,
         vulnerabilities: scan.vulnerabilities,
         severityCounts,
         totalVulnerabilities: scan.vulnerabilities.length,
+        sslCertificate,
+        subdomains,
       },
     });
   } catch (error) {
