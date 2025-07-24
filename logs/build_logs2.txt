@@ -1,0 +1,38 @@
+[13:20:45.094] Running build in Washington, D.C., USA (East) – iad1
+[13:20:45.094] Build machine configuration: 4 cores, 8 GB
+[13:20:45.109] Cloning github.com/NimdaNona/vulnwatch-ai (Branch: main, Commit: 7bb559e)
+[13:20:45.384] Cloning completed: 275.000ms
+[13:20:47.988] Restored build cache from previous deployment (6TZLhyf1Dq7TTS7W5jmwvXoncdDK)
+[13:20:50.121] Running "vercel build"
+[13:20:50.622] Vercel CLI 44.5.3
+[13:20:51.637] Running "install" command: `npm install`...
+[13:20:52.824] npm error code ERESOLVE
+[13:20:52.824] npm error ERESOLVE could not resolve
+[13:20:52.824] npm error
+[13:20:52.824] npm error While resolving: openai@5.10.2
+[13:20:52.824] npm error Found: zod@4.0.5
+[13:20:52.824] npm error node_modules/zod
+[13:20:52.824] npm error   zod@"^4.0.5" from the root project
+[13:20:52.824] npm error
+[13:20:52.824] npm error Could not resolve dependency:
+[13:20:52.825] npm error peerOptional zod@"^3.23.8" from openai@5.10.2
+[13:20:52.825] npm error node_modules/openai
+[13:20:52.825] npm error   openai@"^5.10.2" from the root project
+[13:20:52.825] npm error
+[13:20:52.825] npm error Conflicting peer dependency: zod@3.25.76
+[13:20:52.825] npm error node_modules/zod
+[13:20:52.825] npm error   peerOptional zod@"^3.23.8" from openai@5.10.2
+[13:20:52.825] npm error   node_modules/openai
+[13:20:52.825] npm error     openai@"^5.10.2" from the root project
+[13:20:52.825] npm error
+[13:20:52.825] npm error Fix the upstream dependency conflict, or retry
+[13:20:52.825] npm error this command with --force or --legacy-peer-deps
+[13:20:52.825] npm error to accept an incorrect (and potentially broken) dependency resolution.
+[13:20:52.825] npm error
+[13:20:52.826] npm error
+[13:20:52.826] npm error For a full report see:
+[13:20:52.826] npm error /vercel/.npm/_logs/2025-07-24T17_20_51_865Z-eresolve-report.txt
+[13:20:52.826] npm error A complete log of this run can be found in: /vercel/.npm/_logs/2025-07-24T17_20_51_865Z-debug-0.log
+[13:20:52.861] Error: Command "npm install" exited with 1
+[13:20:53.192] 
+[13:20:56.697] Exiting build container

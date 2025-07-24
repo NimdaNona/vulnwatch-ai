@@ -3,6 +3,7 @@
 import { useAuth } from "@/components/auth/auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import Link from "next/link";
 import {
   Select,
   SelectContent,
@@ -81,6 +82,13 @@ export default function DashboardPage() {
               retryAfter: data.retryAfter,
             });
           }
+        } else if (response.status === 403 && data.upgradeUrl) {
+          // Handle subscription required errors
+          setScanError(data.message || data.error);
+          // Optionally redirect to pricing after a delay
+          setTimeout(() => {
+            router.push(data.upgradeUrl);
+          }, 3000);
         } else {
           setScanError(data.error || "Failed to start scan");
         }
@@ -120,10 +128,17 @@ export default function DashboardPage() {
         <p className="text-gray-400">
           Welcome back, {user.name || user.email}
         </p>
-        <div className="mt-2">
+        <div className="mt-2 flex items-center gap-2">
           <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-neon-green/10 text-neon-green border border-neon-green/20">
             {user.subscriptionPlan || "Free"} Plan
           </span>
+          {!user.subscriptionPlan && (
+            <Link href="/#pricing">
+              <Button variant="outline" size="sm" className="text-xs">
+                Upgrade Plan
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -243,6 +258,11 @@ export default function DashboardPage() {
             {rateLimitInfo && rateLimitInfo.retryAfter && (
               <p className="text-sm text-red-400 mt-1">
                 Please try again in {rateLimitInfo.retryAfter} seconds
+              </p>
+            )}
+            {scanError.includes("upgrade") && (
+              <p className="text-sm text-red-400 mt-2">
+                Redirecting to pricing page...
               </p>
             )}
           </div>

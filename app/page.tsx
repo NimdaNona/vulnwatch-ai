@@ -33,12 +33,11 @@ export default function Home() {
                   Login
                 </Button>
               </Link>
-              <StripeCheckout 
-                planId="starter"
-                className="bg-neon-green text-black hover:bg-neon-green/90 font-semibold"
-              >
-                Get Started
-              </StripeCheckout>
+              <Link href="/register">
+                <Button className="bg-neon-green text-black hover:bg-neon-green/90 font-semibold">
+                  Get Started Free
+                </Button>
+              </Link>
             </div>
           </nav>
         </header>
@@ -65,20 +64,24 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <StripeCheckout 
-                planId="pro"
-                className="bg-neon-green text-black hover:bg-neon-green/90 font-semibold neon-glow text-lg px-8 py-6"
-              >
-                Start Free Trial
-                <ArrowRightIcon className="ml-2 h-4 w-4" />
-              </StripeCheckout>
-              <Button 
-                size="lg" 
-                variant="outline" 
-                className="border-white/20 hover:bg-white/10"
-              >
-                View Documentation
-              </Button>
+              <Link href="/register">
+                <Button
+                  size="lg"
+                  className="bg-neon-green text-black hover:bg-neon-green/90 font-semibold neon-glow text-lg px-8 py-6"
+                >
+                  Start Free Account
+                  <ArrowRightIcon className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="#pricing">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="border-white/20 hover:bg-white/10"
+                >
+                  View Pricing
+                </Button>
+              </Link>
             </div>
 
             <div className="flex items-center justify-center gap-8 text-sm text-gray-400 pt-8">
@@ -164,7 +167,7 @@ export default function Home() {
         </section>
 
         {/* Pricing Section */}
-        <section className="container mx-auto px-4 py-20">
+        <section id="pricing" className="container mx-auto px-4 py-20">
           <div className="max-w-6xl mx-auto space-y-12">
             <div className="text-center space-y-4">
               <h2 className="text-3xl md:text-4xl font-bold">
@@ -175,7 +178,41 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-4 gap-6">
+              {/* Free Plan */}
+              <Card className="glass border-white/10 p-8 hover:border-white/20 transition-colors">
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold">Free</h3>
+                  <div className="space-y-1">
+                    <p className="text-4xl font-bold">$0<span className="text-lg font-normal text-gray-400">/month</span></p>
+                    <p className="text-gray-400">For personal projects</p>
+                  </div>
+                  <Link href="/register">
+                    <Button className="w-full bg-gray-800 hover:bg-gray-700">
+                      Get Started
+                    </Button>
+                  </Link>
+                  <ul className="space-y-3 pt-4">
+                    <li className="flex items-center gap-2 text-sm">
+                      <CheckIcon className="h-4 w-4 text-neon-green" />
+                      1 application
+                    </li>
+                    <li className="flex items-center gap-2 text-sm">
+                      <CheckIcon className="h-4 w-4 text-neon-green" />
+                      5 scans per day
+                    </li>
+                    <li className="flex items-center gap-2 text-sm">
+                      <CheckIcon className="h-4 w-4 text-neon-green" />
+                      Basic vulnerability detection
+                    </li>
+                    <li className="flex items-center gap-2 text-sm">
+                      <CheckIcon className="h-4 w-4 text-neon-green" />
+                      Email alerts
+                    </li>
+                  </ul>
+                </div>
+              </Card>
+
               {/* Starter Plan */}
               <Card className="glass border-white/10 p-8 hover:border-white/20 transition-colors">
                 <div className="space-y-4">
@@ -301,13 +338,23 @@ export default function Home() {
               Join thousands of developers who trust VulnWatch AI to keep their 
               applications secure. Start your free trial today.
             </p>
-            <StripeCheckout 
-              planId="pro"
-              className="bg-neon-green text-black hover:bg-neon-green/90 font-semibold text-lg px-8 py-6"
-            >
-              Start Your Free Trial
-              <ArrowRightIcon className="ml-2 h-4 w-4" />
-            </StripeCheckout>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/register">
+                <Button className="bg-neon-green text-black hover:bg-neon-green/90 font-semibold text-lg px-8 py-6">
+                  Create Free Account
+                  <ArrowRightIcon className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+              <Link href="#pricing">
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="border-white/20 hover:bg-white/10 px-8 py-6"
+                >
+                  Compare Plans
+                </Button>
+              </Link>
+            </div>
           </Card>
         </section>
       </div>

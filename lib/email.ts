@@ -16,6 +16,12 @@ export async function sendEmail({
   from = "VulnWatch AI <noreply@vulnwatch.ai>",
 }: SendEmailOptions) {
   try {
+    // Skip email sending if no API key is configured
+    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_placeholder") {
+      console.log("Email service not configured, skipping email:", { to, subject });
+      return { id: "skipped", message: "Email service not configured" };
+    }
+
     const { data, error } = await resend.emails.send({
       from,
       to,
@@ -25,6 +31,11 @@ export async function sendEmail({
 
     if (error) {
       console.error("Failed to send email:", error);
+      // Check for domain verification error
+      if (error.message?.includes("domain is not verified")) {
+        console.warn("Email domain not verified. Skipping email send.");
+        return { id: "skipped", message: "Domain not verified" };
+      }
       throw new Error(`Email send failed: ${error.message}`);
     }
 
@@ -32,6 +43,10 @@ export async function sendEmail({
     return data;
   } catch (error) {
     console.error("Email service error:", error);
+    // Don't fail critical operations due to email issues
+    if (error instanceof Error && error.message.includes("domain is not verified")) {
+      return { id: "skipped", message: "Domain not verified" };
+    }
     throw error;
   }
 }

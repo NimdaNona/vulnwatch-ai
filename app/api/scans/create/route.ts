@@ -52,16 +52,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check subscription status
-    if (!user.subscriptionStatus || user.subscriptionStatus === "canceled") {
-      return NextResponse.json(
-        { error: "Active subscription required" },
-        { status: 403 }
-      );
-    }
-
-    // Get plan limits
-    const planLimits = getPlanLimits(user.subscriptionPlan);
+    // Get plan limits based on subscription or free tier
+    const planLimits = getPlanLimits(user.subscriptionPlan || "free");
 
     // Check hourly rate limit
     const hourlyRateLimit = await checkRateLimit({
@@ -115,6 +107,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { domain, scanType } = validationResult.data;
+
+    // Check if free user is trying to do deep scan
+    if (!user.subscriptionPlan && scanType === "deep") {
+      return NextResponse.json(
+        { 
+          error: "Deep scans require a paid subscription", 
+          message: "Upgrade to Starter or Pro plan to perform deep scans. Free users can only perform quick scans.",
+          upgradeUrl: "/#pricing"
+        },
+        { status: 403 }
+      );
+    }
 
     // Extract hostname from URL
     const url = new URL(domain);
