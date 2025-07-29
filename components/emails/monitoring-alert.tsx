@@ -29,7 +29,7 @@ export const MonitoringAlertEmail = ({
   scanId,
   summary,
 }: MonitoringAlertEmailProps) => {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://vulnwatch.ai";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://vulnwatch.app";
   const scanUrl = `${baseUrl}/dashboard/scan/${scanId}`;
 
   const getStatusEmoji = (status: string) => {

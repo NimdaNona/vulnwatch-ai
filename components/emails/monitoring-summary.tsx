@@ -39,7 +39,7 @@ export const MonitoringSummaryEmail = ({
   totalScans = 0,
   overallTrend = "unchanged",
 }: MonitoringSummaryEmailProps) => {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://vulnwatch.ai";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://vulnwatch.app";
 
   const getTrendEmoji = (trend: string) => {
     switch (trend) {

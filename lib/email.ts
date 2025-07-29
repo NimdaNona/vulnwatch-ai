@@ -1,6 +1,7 @@
 import { Resend } from "resend";
+import { config, getEmailConfig } from "./config";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "re_placeholder");
+const resend = new Resend(config.RESEND_API_KEY || "re_placeholder");
 
 interface SendEmailOptions {
   to: string;
@@ -13,11 +14,11 @@ export async function sendEmail({
   to,
   subject,
   html,
-  from = "VulnWatch AI <noreply@vulnwatch.ai>",
+  from = getEmailConfig().from,
 }: SendEmailOptions) {
   try {
     // Skip email sending if no API key is configured
-    if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY === "re_placeholder") {
+    if (!config.RESEND_API_KEY || config.RESEND_API_KEY === "re_placeholder") {
       console.log("Email service not configured, skipping email:", { to, subject });
       return { id: "skipped", message: "Email service not configured" };
     }

@@ -246,7 +246,7 @@ export function getScanNotificationTemplate({
       `}
       
       <div style="text-align: center;">
-        <a href="https://vulnwatch-ai.vercel.app/dashboard/scans/${scanId}" class="button">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://vulnwatch.app"}/dashboard/scans/${scanId}" class="button">
           View Detailed Report
         </a>
       </div>

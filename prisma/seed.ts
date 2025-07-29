@@ -8,7 +8,7 @@ async function main() {
   // Create sample users
   const user1 = await prisma.user.create({
     data: {
-      email: "demo@vulnwatch.ai",
+      email: "demo@vulnwatch.app",
       name: "Demo User",
       stripeCustomerId: "cus_demo123",
       subscriptionStatus: "active",
@@ -19,7 +19,7 @@ async function main() {
 
   const user2 = await prisma.user.create({
     data: {
-      email: "trial@vulnwatch.ai",
+      email: "trial@vulnwatch.app",
       name: "Trial User",
       stripeCustomerId: "cus_trial456",
       subscriptionStatus: "trialing",

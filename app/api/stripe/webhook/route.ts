@@ -5,13 +5,15 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth";
 import { sendWelcomeEmail } from "@/lib/email";
 import crypto from "crypto";
+import { config, getStripeConfig } from "@/lib/config";
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripeConfig = getStripeConfig();
+const stripe = new Stripe(stripeConfig.secretKey, {
   apiVersion: "2025-06-30.basil",
 });
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+const webhookSecret = stripeConfig.webhookSecret;
 
 // Disable body parsing, we need the raw body for webhook verification
 export const runtime = "nodejs";

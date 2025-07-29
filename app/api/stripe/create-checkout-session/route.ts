@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { config, getStripeConfig, getAppUrl } from "@/lib/config";
 
-// Initialize Stripe with error handling
-const stripeKey = process.env.STRIPE_SECRET_KEY;
-if (!stripeKey) {
-  console.error("STRIPE_SECRET_KEY is not set in environment variables");
-}
-
-// Clean the key to remove any potential whitespace or newlines
-const cleanedKey = stripeKey ? stripeKey.trim() : "";
-
-const stripe = new Stripe(cleanedKey, {
+// Initialize Stripe with centralized config
+const stripeConfig = getStripeConfig();
+const stripe = new Stripe(stripeConfig.secretKey, {
   apiVersion: "2025-06-30.basil",
 });
 
-// Price IDs will be updated with recurring prices
-const PRICE_IDS = {
-  starter: process.env.STRIPE_PRICE_ID_STARTER!,
-  pro: process.env.STRIPE_PRICE_ID_PRO!,
-};
+// Price IDs from centralized config
+const PRICE_IDS = stripeConfig.prices;
 
 export async function POST(request: NextRequest) {
   try {
     // Validate Stripe is properly initialized
-    if (!cleanedKey || cleanedKey.length === 0) {
+    if (!stripeConfig.secretKey || stripeConfig.secretKey.length === 0) {
       console.error("Stripe key is empty or invalid");
       return NextResponse.json(
         { error: "Stripe configuration error" },

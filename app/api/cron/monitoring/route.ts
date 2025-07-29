@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { processScan } from "@/lib/jobs/scan-processor";
 import { compareScanResults, generateComparisonSummary } from "@/lib/monitoring/scan-comparison";
 import { sendMonitoringAlertEmail } from "@/lib/email";
+import { config } from "@/lib/config";
 
 // This cron job runs every hour to check for scheduled scans
 export async function GET(request: NextRequest) {
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Verify this is from Vercel Cron (check for authorization header)
     const headersList = await headers();
     const authHeader = headersList.get("authorization");
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (authHeader !== `Bearer ${config.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
