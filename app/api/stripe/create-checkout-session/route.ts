@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+// Initialize Stripe with error handling
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeKey) {
+  console.error("STRIPE_SECRET_KEY is not set in environment variables");
+}
+
+// Clean the key to remove any potential whitespace or newlines
+const cleanedKey = stripeKey ? stripeKey.trim() : "";
+
+const stripe = new Stripe(cleanedKey, {
   apiVersion: "2025-06-30.basil",
 });
 
@@ -14,6 +22,15 @@ const PRICE_IDS = {
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate Stripe is properly initialized
+    if (!cleanedKey || cleanedKey.length === 0) {
+      console.error("Stripe key is empty or invalid");
+      return NextResponse.json(
+        { error: "Stripe configuration error" },
+        { status: 500 }
+      );
+    }
+
     const { plan_id, success_url, cancel_url } = await request.json();
 
     // Validate plan_id
