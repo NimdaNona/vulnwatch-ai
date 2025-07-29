@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
+import { processScan } from "@/lib/jobs/scan-processor";
+import { compareScanResults, generateComparisonSummary } from "@/lib/monitoring/scan-comparison";
+import { sendMonitoringAlertEmail } from "@/lib/email";
 
 // This cron job runs every hour to check for scheduled scans
 export async function GET(request: NextRequest) {
   try {
     // Verify this is from Vercel Cron (check for authorization header)
-    const authHeader = headers().get("authorization");
+    const headersList = await headers();
+    const authHeader = headersList.get("authorization");
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -23,13 +27,22 @@ export async function GET(request: NextRequest) {
       },
       include: {
         user: true,
-        monitoredDomains: true,
+        monitoredDomains: {
+          include: {
+            lastScan: {
+              include: {
+                vulnerabilities: true,
+              },
+            },
+          },
+        },
       },
     });
 
     console.log(`Found ${dueMonitoring.length} users due for monitoring scans`);
 
     const results = [];
+    const scanPromises: Promise<void>[] = [];
 
     for (const monitoring of dueMonitoring) {
       try {
@@ -39,7 +52,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Calculate next scan time
-        let nextScanAt = new Date(now);
+        const nextScanAt = new Date(now);
         switch (monitoring.frequency) {
           case "DAILY":
             nextScanAt.setDate(nextScanAt.getDate() + 1);
@@ -70,11 +83,10 @@ export async function GET(request: NextRequest) {
                 userId: monitoring.userId,
                 targetUrl: domain.domain,
                 status: "pending",
+                results: { scanType: "quick" }, // Use quick scan for monitoring
               },
             });
 
-            // Here you would trigger the actual scan
-            // For now, we'll just log it
             console.log(`Created scan ${scan.id} for domain ${domain.domain}`);
 
             // Update last scan ID
@@ -89,8 +101,57 @@ export async function GET(request: NextRequest) {
               scanId: scan.id,
             });
 
-            // TODO: Trigger actual scan via backend API
-            // TODO: Send notification emails if enabled
+            // Process scan asynchronously
+            const scanPromise = processScan(scan.id).then(async () => {
+              // After scan completes, check for changes
+              if (domain.lastScan) {
+                try {
+                  // Get the completed scan with vulnerabilities
+                  const completedScan = await prisma.scan.findUnique({
+                    where: { id: scan.id },
+                    include: { vulnerabilities: true },
+                  });
+
+                  if (completedScan && domain.lastScan) {
+                    // Compare scans
+                    const comparison = await compareScanResults(
+                      domain.lastScan as any,
+                      completedScan as any
+                    );
+
+                    // Check if we should send notifications
+                    if (monitoring.notifyEmail) {
+                      const shouldNotify = 
+                        (monitoring.notifyOnNewVulns && comparison.summary.totalNew > 0) ||
+                        (monitoring.notifyOnChanges && (
+                          comparison.summary.totalChanged > 0 || 
+                          comparison.summary.totalResolved > 0
+                        ));
+
+                      if (shouldNotify) {
+                        // Send alert email
+                        await sendMonitoringAlertEmail(
+                          monitoring.user.email,
+                          monitoring.user.name || "User",
+                          {
+                            domain: domain.domain,
+                            comparison,
+                            scanId: scan.id,
+                            summary: generateComparisonSummary(comparison),
+                          }
+                        );
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.error(`Failed to compare scans for domain ${domain.domain}:`, error);
+                }
+              }
+            }).catch(error => {
+              console.error(`Failed to process scan ${scan.id}:`, error);
+            });
+
+            scanPromises.push(scanPromise);
           } catch (error) {
             console.error(`Failed to create scan for domain ${domain.domain}:`, error);
           }
@@ -99,6 +160,12 @@ export async function GET(request: NextRequest) {
         console.error(`Failed to process monitoring for user ${monitoring.userId}:`, error);
       }
     }
+
+    // Wait for all scans to start processing (but don't wait for completion)
+    // This ensures scans are queued but allows the cron job to complete quickly
+    Promise.all(scanPromises).catch(error => {
+      console.error("Some scans failed to process:", error);
+    });
 
     return NextResponse.json({
       success: true,

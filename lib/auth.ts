@@ -63,3 +63,21 @@ export function generateTempPassword(): string {
   }
   return password;
 }
+
+// Auth helper for API routes
+export async function auth() {
+  const token = await getAuthToken();
+  if (!token) return null;
+  
+  const payload = verifyToken(token);
+  if (!payload) return null;
+  
+  return {
+    user: {
+      id: payload.userId,
+      email: payload.email,
+      subscriptionStatus: payload.subscriptionStatus,
+      subscriptionPlan: payload.subscriptionPlan,
+    }
+  };
+}

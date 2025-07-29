@@ -89,3 +89,71 @@ export async function sendScanNotificationEmail(
     html,
   });
 }
+
+export async function sendMonitoringAlertEmail(
+  email: string,
+  name: string,
+  alertDetails: {
+    domain: string;
+    comparison: any; // ScanComparison type
+    scanId: string;
+    summary: string;
+  }
+) {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const MonitoringAlertEmail = (await import("@/components/emails/monitoring-alert")).default;
+  
+  const emailHtml = renderToStaticMarkup(
+    MonitoringAlertEmail({
+      name,
+      domain: alertDetails.domain,
+      comparison: alertDetails.comparison,
+      scanId: alertDetails.scanId,
+      summary: alertDetails.summary,
+    })
+  );
+
+  return sendEmail({
+    to: email,
+    subject: `🔔 Security Alert for ${alertDetails.domain}`,
+    html: emailHtml,
+  });
+}
+
+export async function sendMonitoringSummaryEmail(
+  email: string,
+  name: string,
+  summaryDetails: {
+    period: "weekly" | "monthly";
+    domains: Array<{
+      domain: string;
+      lastScanDate: Date;
+      vulnerabilityCount: number;
+      criticalCount: number;
+      highCount: number;
+      securityScore: number;
+      trend: "improved" | "degraded" | "unchanged";
+    }>;
+    totalScans: number;
+    overallTrend: "improved" | "degraded" | "unchanged";
+  }
+) {
+  const { renderToStaticMarkup } = await import("react-dom/server");
+  const MonitoringSummaryEmail = (await import("@/components/emails/monitoring-summary")).default;
+  
+  const emailHtml = renderToStaticMarkup(
+    MonitoringSummaryEmail({
+      name,
+      period: summaryDetails.period,
+      domains: summaryDetails.domains,
+      totalScans: summaryDetails.totalScans,
+      overallTrend: summaryDetails.overallTrend,
+    })
+  );
+
+  return sendEmail({
+    to: email,
+    subject: `Your ${summaryDetails.period} security monitoring summary`,
+    html: emailHtml,
+  });
+}
