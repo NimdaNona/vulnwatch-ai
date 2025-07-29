@@ -8,17 +8,18 @@ datasource db {
 }
 
 model User {
-  id                 String   @id @default(cuid())
-  email              String   @unique
-  name               String?
-  password           String?  // Hashed password
-  stripeCustomerId   String?  @unique
-  subscriptionStatus String?
-  subscriptionId     String?  @unique
-  subscriptionPlan   String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  scans              Scan[]
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String?
+  password             String?              // Hashed password
+  stripeCustomerId     String?              @unique
+  subscriptionStatus   String?
+  subscriptionId       String?              @unique
+  subscriptionPlan     String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  scans                Scan[]
+  monitoringPreferences MonitoringPreference?
 
   @@index([email])
   @@index([stripeCustomerId])
@@ -59,4 +60,42 @@ model Vulnerability {
   @@index([scanId])
   @@index([severity])
   @@index([cve])
+}
+
+model MonitoringPreference {
+  id                  String              @id @default(cuid())
+  userId              String              @unique
+  enabled             Boolean             @default(false)
+  frequency           MonitoringFrequency @default(WEEKLY)
+  notifyEmail         Boolean             @default(true)
+  notifyOnNewVulns    Boolean             @default(true)
+  notifyOnChanges     Boolean             @default(true)
+  lastScanAt          DateTime?
+  nextScanAt          DateTime?
+  monitoredDomains    MonitoredDomain[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([enabled])
+  @@index([nextScanAt])
+}
+
+model MonitoredDomain {
+  id                   String               @id @default(cuid())
+  domain               String
+  monitoringPreferenceId String
+  lastScanId           String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  monitoringPreference MonitoringPreference @relation(fields: [monitoringPreferenceId], references: [id], onDelete: Cascade)
+
+  @@unique([domain, monitoringPreferenceId])
+  @@index([domain])
+}
+
+enum MonitoringFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
 }

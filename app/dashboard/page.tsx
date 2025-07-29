@@ -19,8 +19,10 @@ import {
   ClockIcon,
   AlertTriangleIcon,
   ZapIcon,
-  SearchIcon
+  SearchIcon,
+  BellIcon
 } from "lucide-react";
+import { MonitoringSettings } from "@/components/monitoring-settings";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
@@ -291,23 +293,29 @@ export default function DashboardPage() {
         )}
       </Card>
 
-      {/* Recent Scans */}
-      <Card className="bg-black/50 backdrop-blur-lg border-gray-800 p-6">
-        <h2 className="text-xl font-semibold text-white mb-4">Recent Scans</h2>
-        {recentScans.length === 0 ? (
-          <div className="text-center py-12">
-            <ScanIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">No scans yet</p>
-            <p className="text-sm text-gray-500 mt-2">
-              Add a domain above to start your first security scan
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Scan items would go here */}
-          </div>
-        )}
-      </Card>
+      {/* Two Column Layout for Monitoring and Recent Scans */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Monitoring Settings */}
+        <MonitoringSettings />
+
+        {/* Recent Scans */}
+        <Card className="bg-black/50 backdrop-blur-lg border-gray-800 p-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Recent Scans</h2>
+          {recentScans.length === 0 ? (
+            <div className="text-center py-12">
+              <ScanIcon className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400">No scans yet</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Add a domain above to start your first security scan
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* Scan items would go here */}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
