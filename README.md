@@ -1,134 +1,39 @@
 # VulnWatch AI
 
-A beautiful, fully automated vulnerability scanning SaaS powered by AI and built on OpenVAS.
+VulnWatch AI is a web application prototype for reviewing exposure on domains a security team manages. It turns service observations, TLS certificate details and HTTP response headers into findings an analyst can prioritize. The Next.js dashboard includes scan history and individual reports with severity and remediation guidance.
 
-## Features
+## How observations become findings
 
-- 🚀 **Real-time Vulnerability Scanning**: Continuous monitoring with instant alerts
-- 🤖 **AI-Powered Analysis**: Smart prioritization and false-positive reduction
-- 🎨 **Stunning UI**: Dark mode, neon accents, smooth animations, and glassmorphism
-- 💳 **Stripe Integration**: Instant signup and subscription management
-- 🔧 **DevOps Ready**: CI/CD pipeline integration with GitHub, GitLab, and more
-- 📊 **Compliance Reports**: Built-in SOC2, HIPAA, PCI-DSS compliance reporting
+The TypeScript scanner applies rules to observations. For example, a certificate that expires in fewer than seven days generates a high-severity finding. With OpenAI configured, the analyzer sends domain, service and certificate context plus baseline findings to the model for additional findings and recommendations. If the model call fails or no API key is configured, the analyzer returns its rule-based assessment. Model suggestions and CVE references need analyst verification.
 
-## Tech Stack
+**Illustrative report for portal.example.** Both rows use the project's rules and fictional observations.
 
-### Frontend
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Utility-first CSS
-- **shadcn/ui** - Beautiful UI components
-- **Lucide Icons** - Modern icon library
+| Observation | Reported finding | Analyst action |
+| --- | --- | --- |
+| The TLS certificate expires in five days. | High · SSL Certificate Expiring Soon | Check renewal and verify the replacement certificate before expiry. |
+| The HTTP Server header includes a product version. | Low · Server Version Disclosure | Review whether clients need the version detail when updating the server configuration. |
 
-### Backend
-- **FastAPI** - Modern Python web framework
-- **PostgreSQL** - Primary database
-- **Redis** - Caching and job queue
-- **Celery** - Background task processing
-- **SQLAlchemy** - ORM
-- **Stripe** - Payment processing
-- **OpenVAS** - Vulnerability scanning engine
+## Inspect the project
 
-## Getting Started
+Follow a report through the source directly on GitHub. This path requires no credentials, installed services or network scanning.
 
-### Prerequisites
+| Source | What to look for |
+| --- | --- |
+| [Scan creation route](app/api/scans/create/route.ts) and [job processor](lib/jobs/scan-processor.ts) | The route creates a record and schedules processing. The processor updates status and saves individual findings. |
+| [Scanner](lib/scanner/scanner.ts) and [analyzer](lib/scanner/ai-analyzer.ts) | Observation collection, severity rules and optional OpenAI enrichment. |
+| [Prisma schema](prisma/schema.prisma) and [scan dashboard](app/dashboard/scans) | PostgreSQL models for scan history and findings, alongside the list and detail views that read them. |
+| [Scan comparison](lib/monitoring/scan-comparison.ts) | How the prototype identifies new, resolved and changed findings across two reports. |
 
-- Docker and Docker Compose
-- Node.js 20+ (for local development)
-- Python 3.11+ (for local development)
+To inspect a local copy with Git:
 
-### Quick Start with Docker
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/vulnwatch-ai.git
+```sh
+git clone https://github.com/NimdaNona/vulnwatch-ai.git
 cd vulnwatch-ai
+git ls-files app/api/scans lib/scanner prisma app/dashboard/scans
 ```
 
-2. Create environment file:
-```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env with your configuration
-```
+## Prototype limits
 
-3. Start all services:
-```bash
-docker-compose up -d
-```
-
-4. Access the application:
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/docs
-
-### Local Development
-
-#### Frontend
-
-```bash
-npm install
-npm run dev
-```
-
-#### Backend
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-## Configuration
-
-### Environment Variables
-
-#### Backend (.env)
-- `SECRET_KEY` - JWT secret key
-- `DATABASE_URL` - PostgreSQL connection string
-- `REDIS_URL` - Redis connection string
-- `STRIPE_SECRET_KEY` - Stripe API secret key
-- `STRIPE_WEBHOOK_SECRET` - Stripe webhook secret
-- `OPENVAS_HOST` - OpenVAS server host
-- `OPENVAS_PASSWORD` - OpenVAS admin password
-
-#### Frontend
-- `NEXT_PUBLIC_API_URL` - Backend API URL
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
-
-## Architecture
-
-```
-vulnwatch-ai/
-├── app/                  # Next.js app router
-├── components/           # React components
-├── lib/                  # Utilities
-├── backend/              # FastAPI backend
-│   └── app/
-│       ├── api/         # API routes
-│       ├── core/        # Core configuration
-│       ├── db/          # Database models
-│       ├── models/      # SQLAlchemy models
-│       ├── schemas/     # Pydantic schemas
-│       └── services/    # Business logic
-└── docker-compose.yml    # Docker orchestration
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgments
-
-- Built on top of [OpenVAS](https://www.openvas.org/) by Greenbone Networks
-- UI inspired by modern cybersecurity platforms
-- Icons from [Lucide](https://lucide.dev/)
+- The landing-page simulation uses scripted findings. The dashboard overview uses placeholder metrics. The scan history and detail pages fetch stored reports.
+- The scan creation route starts work with an in-process timer. A restart can interrupt processing, and this path has no durable queue.
+- The root Compose file defines an OpenVAS service. The report processor calls the TypeScript scanner directly. The separate FastAPI entry point mounts Stripe routes and a health endpoint.
